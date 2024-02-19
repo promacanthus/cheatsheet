@@ -1,5 +1,7 @@
-# cheatsheet
+# Cheat Sheet
 
-[[Promethues/README|README]]
-[[Network/README|README]]
-[[Kubernetes/README|README]]
+- [Kubernetes](Kubernetes/README.md)
+    - [Kubectl](Kubernetes/KUBECTL.md)
+    - [YAML](Kubernetes/YAML.md) 
+- [Prometheus](Prometheus/README.md)
+- [Network](Network/README.md)
