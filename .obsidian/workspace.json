@@ -1,0 +1,169 @@
+{
+  "main": {
+    "id": "d7a22a7e5f9e9e0e",
+    "type": "split",
+    "children": [
+      {
+        "id": "3d8a89bc53408793",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "0013b0584b91e453",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "SUMMARY.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "94a59012e6ffdab4",
+    "type": "split",
+    "children": [
+      {
+        "id": "85d98efcc84a452b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "5aa176d3903470d0",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical"
+              }
+            }
+          },
+          {
+            "id": "1d3854e40931e1f0",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              }
+            }
+          },
+          {
+            "id": "cc24712e0d604763",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {}
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "5cec4912eb904201",
+    "type": "split",
+    "children": [
+      {
+        "id": "ed1e9dc5faa2e44c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "860c37b14422899e",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "SUMMARY.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          },
+          {
+            "id": "c715c262bc853d84",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "SUMMARY.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          },
+          {
+            "id": "e7310ecf7fd1b60b",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true
+              }
+            }
+          },
+          {
+            "id": "c3325316043a4dab",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "SUMMARY.md"
+              }
+            }
+          }
+        ],
+        "currentTab": 3
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "obsidian-excalidraw-plugin:新建绘图文件": false
+    }
+  },
+  "active": "0013b0584b91e453",
+  "lastOpenFiles": [
+    "README.md",
+    "SUMMARY.md",
+    "Promethues/README.md",
+    "Network/README.md",
+    "Kubernetes/README.md",
+    "Promethues",
+    "Network/TOOLS.md",
+    "Excalidraw/Drawing 2024-02-19 14.21.31.excalidraw.md",
+    "Kubernetes/KUBECTL.md",
+    "Kubernetes/YAML.md",
+    "Excalidraw",
+    "2024-02-19.md",
+    "Network",
+    "Kubernetes",
+    "SUMMAY.md"
+  ]
+}
