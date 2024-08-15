@@ -1,8 +1,3 @@
-+++
-title = "Prometheus"
-+++
-
-
 - [kubelet 上报的指标](https://github.com/kubernetes/kube-state-metrics/blob/main/docs/pod-metrics.md)
 - [cAdvisor 上报的指标](https://github.com/google/cadvisor/blob/master/docs/storage/prometheus.md)
 - <https://samber.github.io/awesome-prometheus-alerts/rules#host-and-hardware>

@@ -1,7 +1,3 @@
-+++
-title = "Linux"
-+++
-
 将 `sudo` 放在脚本首行，以 root 身份运行整个脚本
 
 ```bash

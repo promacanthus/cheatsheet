@@ -11,6 +11,7 @@ This repository contains a comprehensive collection of cheat sheets for various 
 | Linux | [Commands](docs/Linux/README.md) | Updated |
 | Network | [Tools](docs/Network/TOOLS.md) | Updated |
 | Prometheus | [PromQL](docs/Prometheus/PromQL.md) | Updated |
+| Rust| [Rust](docs/Rust/README.md) | Updated |
 
 ## Usage
 
