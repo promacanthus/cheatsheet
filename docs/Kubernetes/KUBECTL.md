@@ -1,8 +1,3 @@
-+++
-title = "Kubectl"
-+++
-
-
 # 命令速查
 
 ## API
