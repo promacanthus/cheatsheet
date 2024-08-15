@@ -4,6 +4,12 @@ This repository contains a collection of cheat sheets for various technologies a
 
 ## Contents
 
+- Kubernetes
+- Linux
+- Network
+- Prometheus
+- Rust
+
 ## Usage
 
 Each directory contains specific cheat sheets related to the technology or tool. Navigate to the respective directories to find detailed information and quick reference guides.
