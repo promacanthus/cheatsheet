@@ -1,3 +1,9 @@
+---
+title: Rust Cheat Sheet
+description: Rust Cheat Sheet
+layout: default
+---
+
 * TOC
 {:toc}
 
