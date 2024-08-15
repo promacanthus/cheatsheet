@@ -1,23 +1,25 @@
 # Cheat Sheet Collection
 
-This repository contains a collection of cheat sheets for various technologies and tools commonly used in software development and system administration.
+This repository contains a comprehensive collection of cheat sheets for various technologies and tools commonly used in software development and system administration.
 
 ## Contents
 
-- Kubernetes
-- Linux
-- Network
-- Prometheus
-- Rust
+| Category | Subcategory | Update Status |
+|----------|-------------|---------------|
+| Kubernetes | [Kubectl](docs/Kubernetes/KUBECTL.md) | Updated |
+| Kubernetes | [YAML](docs/Kubernetes/YAML.md) | Updated |
+| Linux | [Commands](docs/Linux/README.md) | Updated |
+| Network | [Tools](docs/Network/TOOLS.md) | Updated |
+| Prometheus | [PromQL](docs/Prometheus/PromQL.md) | Updated |
 
 ## Usage
 
-Each directory contains specific cheat sheets related to the technology or tool. Navigate to the respective directories to find detailed information and quick reference guides.
+Each cheat sheet is organized in its respective directory and contains quick reference guides, common commands, and best practices for the corresponding technology or tool.
 
 ## Contributing
 
-Contributions to expand and improve these cheat sheets are welcome. Please feel free to submit pull requests or open issues for any corrections or additions.
+Contributions are welcome! If you'd like to add a new cheat sheet or improve an existing one, please submit a pull request.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
