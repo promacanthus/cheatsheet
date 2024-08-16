@@ -1272,28 +1272,6 @@ fn process(data: Option<i32>) -> i32 {
 * 编译器会检查发散函数是否真的不会返回
 * 发散函数仍然可以包含 `return` 语句，但这些语句必须也是发散的
 
-## 所有权和借用
-
-所有权规则
-引用和借用
-生命周期
-
-## 特征（Traits）
-
-trait 定义
-impl Trait for Type
-
-## 错误处理
-
-Result<T, E>
-Option
-panic!
-
-## 泛型
-
-函数中的泛型
-结构体和枚举中的泛型
-
 ## 模块系统
 
 ### mod 关键字
@@ -1353,12 +1331,6 @@ fn main() {
 
 默认情况下，模块中的项拥有私有的可见性（private visibility），不过可以加上 `pub` 修饰语来重载这一行为。模块中只有公有的（public）项可以从模块外的作用域访问。
 
-## 常用标准库功能
-
-Vec, String 操作
-文件 I/O
-并发（线程）
-
 ## 属性
 
 * 当属性作用于整个 crate 时，它们的语法为 `#![crate_attribute]`，
@@ -1406,10 +1378,816 @@ fn main() {
 }
 ```
 
+## 泛型
+
+泛型极大地减少了代码的重复，采用泛型意味着指定**泛型类型具体化**时，什么样的具体类型是合法的。泛型最简单和常用的用法是用于**类型参数**。
+
+泛型的**类型参数**是使用**尖括号**和**大驼峰命名**的名称：`<Aaa, Bbb, ...>` 来指定的。泛型类型参数一般用 `<T>` 来表示。
+
+```rust
+// 泛型函数的定义
+fn foo<T>(arg: T) { ... }
+
+// 泛型函数的调用
+fun::<A, B, ...>();
+
+// 泛型方法
+struct generic<T> {
+    value: T,
+}
+
+impl<T> generic<T> {
+    fn value(&self) -> &T {
+        &self.value
+    }
+}
+
+// 泛型特性
+trait MyTrait<T> {
+    fn foo(self);
+}
+
+impl<T, U> MyTrait<T> for U {
+    fn foo(self) {}
+}
+
+fn main() {
+    // 调用泛型方法
+    let g = generic { value: 42 };
+    println!("{}", g.value());
+    // 调用泛型特性
+    <i32 as MyTrait<i32>>::foo(42);
+    <&str as MyTrait<&str>>::foo("hello");
+}
+```
+
+在使用泛型时，类型参数常常必须使用 `trait` 作为约束（`bound`）来明确规定类型应实现哪些功能。
+
+约束的工作机制会产生这样的效果：
+
+* **即使一个 `trait` 不包含任何功能，你仍然可以用它作为约束**。标准库中的 `Eq` 和 `Ord` 就是这样的 trait。
+* 如果有多重约束时，可以用 `+` 连接。和平常一样，类型之间使用 `,` 隔开。
+
+```rust
+fn printer<T: std::fmt::Display>(arg: T) {
+    println!("{}", arg);
+}
+
+struct Example;
+trait Empty {}
+impl Empty for Example {}
+
+fn demo<T: Empty>(arg: T) -> &'static str {
+    "empty"
+}
+
+fn main() {
+    let e = Example;
+    demo::<Example>(e);
+
+    let ee = "";
+    // &str 没有实现 Empty trait 下一行会报错。
+    // demo::<&str>(ee);
+}
+```
+
+约束也可以使用 `where` 分句来表达，它放在 `{` 的前面，而不需写在类型第一次出现之前。另外 `where` 从句可以用于任意类型的限定，而不局限于类型参数本身。
+
+where 在下面一些情况下很有用：
+
+* 当分别指定泛型的类型和约束会更清晰时
+* 当使用 where 从句比正常语法更有表现力时
+
+```rust
+use std::fmt::Debug;
+
+trait PrintInOption {
+    fn print_in_option(self);
+}
+
+// 这里需要一个 `where` 从句，否则就要表达成 `T: Debug`（这样意思就变了），
+// 或者改用另一种间接的方法。
+impl<T> PrintInOption for T where
+    Option<T>: Debug {
+    // 我们要将 `Option<T>: Debug` 作为约束，因为那是要打印的内容。
+    // 否则我们会给出错误的约束。
+    fn print_in_option(self) {
+        println!("{:?}", Some(self));
+    }
+}
+
+fn main() {
+    let vec = vec![1, 2, 3];
+    vec.print_in_option();
+}
+```
+
+### 关联项
+
+Rust 中的 `trait` 可以包含关联项，包括**关联类型**、**关联常量**和**关联函数**。这些关联项为 `trait` 提供了更强大和灵活的功能。
+
+```rust
+// 关联类型
+trait Container {
+    type Item; // 占位符，实现 trait 时指定具体类型
+    fn add(&mut self, item: Self::Item);
+    fn get(&self) -> Option<&Self::Item>;
+}
+
+// 关联常量
+trait HasArea {
+    const PI: f64 = 3.14159;
+    fn area(&self) -> f64;
+}
+
+// 关联函数
+trait Creatable {
+    fn new() -> Self;
+    fn with_value(value: i32) -> Self;
+}
+```
+
+这些关联项可以在实现 `trait` 时被具体化或重写。它们提供了一种方式来定义与 `trait` 相关的类型、常量和函数，而不需要指定具体的实现细节。这增加了 `trait` 的抽象能力和复用性。
+
+使用关联项可以使 `trait` 更加通用和灵活，允许不同的实现者根据自己的需求来定义具体的类型、常量或函数。
+
+## 作用域规则
+
+作用域在**所有权**（ownership）、**借用**（borrow）和**生命周期**（lifetime）中起着重要作用。
+
+Rust 的变量不只是在栈中保存数据：它们也占有资源，比如 `Box<T>` 占有堆（heap）中的内存。Rust 强制实行 **RAII**（Resource Acquisition Is Initialization，资源获取即初始化），所以任何对象在离开作用域时，它的析构函数（destructor）就被调用，然后它占有的资源就被释放。
+
+> Rust 中的析构函数概念是通过 `Drop` trait 提供的。当资源离开作用域，就调用析构函数。无需为每种类型都实现 `Drop` trait，只要为那些需要自己的析构函数逻辑的类型实现就可以了。
+
+### 所有权规则
+
+因为变量要负责释放它们拥有的资源，所以资源只能拥有一个所有者。这也防止了资源的重复释放。注意并非所有变量都拥有资源（例如**引用**）。
+
+在进行赋值（`let x = y`）或通过值来传递函数参数（`foo(x)`）的时候，资源的所有权（ownership）会发生转移。按照 Rust 的说法，这被称为资源的**移动**（move）。
+
+在移动资源之后，原来的所有者不能再被使用，这可避免悬挂指针（dangling pointer）的产生。
+
+* 当所有权转移时，数据的可变性可能发生改变。
+* 在单个变量的解构内，可以同时使用 **by-move** 和 **by-reference** 模式绑定。这样做将导致变量的**部分移动**（partial move），这意味着变量的某些部分将被移动，而其他部分将保留。**在这种情况下，后面不能整体使用父级变量，但是仍然可以使用只引用（而不移动）的部分。**
+
+```rust
+fn main() {
+    // 所有权转移时，可变性发生变化
+    let immutable_box = Box::new(5u32);
+    let mut mutable_box = immutable_box;
+    *mutable_box = 4;
+    println!("{}", mutable_box);
+
+    // 部分移动
+    struct Person {
+        name: String,
+        age: u8,
+    }
+
+    let person = Person {
+        name: String::from("Alice"),
+        age: 30,
+    };
+
+    let Person { name, ref age } = person;
+    println!("{}", person.age);
+}
+```
+
+### 引用和借用
+
+多数情况下，我们更希望**能访问数据**，**同时不取得其所有权**。为实现这点，Rust 使用了**借用**（borrowing）机制。对象可以通过**引用**（`&T`）来传递，从而取代通过值（`T`）来传递。
+
+编译器（通过借用检查）静态地保证了引用总是指向有效的对象。也就是说，**当存在引用指向一个对象时，该对象不能被销毁**。
+
+* `&mut T` 通过可变引用（mutable reference）来借用数据，使借用者可以读/写数据。
+* `&T` 通过不可变引用（immutable reference）来借用数据，借用者可以读数据而不能更改数据。
+
+> 数据可以**多次不可变借用**，但是在不可变借用的同时，原始数据不能使用可变借用。或者说，**同一时间内只允许一次可变借用**。仅当最后一次使用可变引用之后，原始数据才可以再次借用。
+
+在通过 `let` 绑定来进行模式匹配或解构时，`ref` 关键字可用来创建**结构体**/**元组**的字段的引用。
+
+```rust
+fn main() {
+    let var = "var";
+    // _ref_var_1 和 _ref_var_2 等价
+    let ref _ref_var_1 = var;
+    let _ref_var_2 = &var;
+}
+```
+
+### 生命周期
+
+编译器（中的借用检查器）用生命周期来保证所有的借用都是有效的。**一个变量的生命周期在它创建的时候开始，在它销毁的时候结束**。
+
+> 虽然生命周期和作用域经常被一起提到，但它们并不相同。
+> 通过 `&` 来借用一个变量。该借用拥有一个**生命周期**，此生命周期由它声明的位置决定。只要该借用在出借者（lender）被销毁前结束，借用就是有效的。然而，借用的**作用域**则是由使用引用的位置决定的。
+
+#### 结构体
+
+```rust
+// 显示标注
+struct foo<'a>(&'a i32) // foo 的生命周期不超过 'a
+struct bar<'a, 'b>{ &'a i32, &'b i32 } // bar 的生命周期不超过 'a 或 'b 中任意一个
+```
+
+#### 函数/方法
+
+带上生命周期的**函数/方法**签名有一些限制：
+
+* 任何引用都必须拥有标注好的生命周期。
+* 任何被返回的引用都必须有和某个输入量相同的生命周期或是静态类型（static）。
+
+```rust
+// 参数 x 和 y 的有各自的生命周期，且'b 不能比 'a 活得更久
+fn max<'a, 'b: 'a>(x: &'a i32, y: &'b i32) -> &'a i32 {
+    match x > y {
+        true => x,
+        false => y,
+    }
+}
+```
+
+**注意，如果没有输入的函数返回引用，有时会导致返回的引用指向无效数据，这种情况下禁止它返回这样的引用。**
+
+#### trait
+
+```rust
+trait Default {
+    fn default() -> Self;
+}
+
+struct Borrowed<'a>(&'a i32);
+
+impl<'a> Borrowed<'a> {
+    fn new(x: &'a i32) -> Self {
+        Borrowed(x)
+    }
+}
+
+impl<'a> Default for Borrowed<'a> {
+    fn default() -> Self {
+        Borrowed(&0)
+    }
+}
+```
+
+#### 约束
+
+就如泛型类型能够被约束一样，生命周期（它们本身就是泛型）也可以使用约束。`:` 字符的意义在这里稍微有些不同，不过 `+` 是相同的。注意下面的说明：
+
+* `T: 'a`：在 `T` 中的所有引用都必须比生命周期 `'a` 活得更长。
+* `T: Trait + 'a`：`T` 类型必须实现 `Trait` trait，并且在 `T` 中的所有引用都必须比 `'a` 活得更长。
+
+```rust
+// `Ref` 包含一个指向泛型类型 `T` 的引用，其中 `T` 拥有一个未知的生命周期 `'a`。
+// `T` 拥有生命周期限制， `T` 中的任何引用都必须比 `'a` 活得更长。
+// `Ref` 的生命周期也不能超出 `'a`。
+struct Ref<'a, T: 'a>(&'a T);
+
+// 接受一个指向 `T` 的引用，
+// 其中 `T` 实现了 `Debug` trait，并且在 `T` 中的所有引用都必须比 `'a'` 存活时间更长。
+// `'a` 要比函数活得更长。
+fn print_ref<'a, T: 'a>(x: Ref<'a, T>)
+where
+    T: std::fmt::Debug + 'a,
+{
+    println!("{:?}", x.0);
+}
+```
+
+#### 强制转换
+
+一个**较长**的生命周期可以强制转成一个**较短**的生命周期，使它在一个通常情况下不能工作的作用域内也能正常工作。
+
+* 强制转换可以由**编译器隐式地推导**并执行，
+* 强制转换可以通过**声明不同的生命周期**的形式实现。
+
+```rust
+// `x` 和 `y` 有不同的生命周期，编译器推导并强制将它们转换为更短的生命周期。
+fn multiply<'a>(x: &'a i32, y: &'a i32) -> i32 {
+    x * y
+}
+
+// 'a 的生命周期至少和 'b 的生命周期一样长。这是生命周期约束的限制条件。
+// 显式的声明将 'a 的生命周期强制转换为更短的 'b 生命周期。
+fn choose_first<'a: 'b, 'b>(x: &'a i32, _y: &'b i32) -> &'b i32 {
+    x
+}
+```
+
+#### static
+
+`'static` 生命周期是可能的生命周期中**最长**的，它会**在整个程序运行的时期中存在**。`'static` 生命周期也可被强制转换成一个更短的生命周期。有两种方式使变量拥有 `'static` 生命周期，它们都把数据保存在可执行文件的**只读内存区**：
+
+* 使用 `static` 声明来产生常量（`constant`）。
+* 产生一个拥有 `&'static str` 类型的 `string` 字面量。
+
+```rust
+// 创建一个生命周期是 static 的常量
+static NUM: i32 = 18;
+
+// 强制 static 的生命周期转换为 coerce_static() 入参的生命周期。
+fn coerce_static<'a>(_: &'a i32) -> &'a i32 {
+    &NUM
+}
+```
+
+#### 省略
+
+有些生命周期的模式**太常用了**，所以**借用检查器**将会**隐式**地添加它们以减少程序输入量和增强可读性。
+
+这种隐式添加生命周期的过程称为**省略**（elision）。在 Rust 使用省略仅仅是因为**这些模式太普遍了**。
+
+```rust
+//  elided_input 和 annotated_input等价
+fn elided_input(x: &i32) {
+    println!("{}", x);
+}
+
+fn annotated_input<'a>(x: &'a i32) {
+    println!("{}", x);
+}
+
+// elided_pass 和 annotated_pass 等价
+fn elided_pass(x: &i32) -> &i32 {
+    x
+}
+
+fn annotated_pass<'a>(x: &'a i32) -> &'a i32 {
+    x
+}
+```
+
+## 特征（`trait`）
+
+`trait` 是对未知类型 `Self` 定义的方法集。该类型也可以访问同一个 `trait` 中定义的其他方法。对任何数据类型都可以实现 `trait`。
+
+### 派生
+
+通过 `#[derive]` 属性，编译器能够提供某些 `trait` 的**基本实现**。如果需要更复杂的行为，这些 `trait` 也可以**手动实现**，查看各个属性的标准库，了解手动实现的函数。
+
+下面是可以**自动派生**的 `trait`：
+
+* `[Eq](https://rustwiki.org/zh-CN/std/cmp/trait.Eq.html)`、`[PartialEq](https://rustwiki.org/zh-CN/std/cmp/trait.PartialEq.html)`、`[Ord](https://rustwiki.org/zh-CN/std/cmp/trait.Ord.html)`、`[PartialOrd](https://rustwiki.org/zh-CN/std/cmp/trait.PartialOrd.html)`：用于比较。
+* `[Clone](https://rustwiki.org/zh-CN/std/clone/trait.Clone.html)`：用来从 `&T` 创建副本 `T`。
+* `[Copy](https://rustwiki.org/zh-CN/core/marker/trait.Copy.html)`：使类型具有 “**复制**语义”（copy semantics）而非 “**移动**语义”（move semantics）。**当处理资源时，默认的行为是在赋值或函数调用的同时将它们转移。但是我们有时候也需要把资源复制一份。**
+* `[Hash](https://rustwiki.org/zh-CN/std/hash/trait.Hash.html)`：从 `&T` 计算哈希值（hash）。
+* `[Default](https://rustwiki.org/zh-CN/std/default/trait.Default.html)`：创建数据类型的一个空实例。
+* `[Debug](https://rustwiki.org/zh-CN/std/fmt/trait.Debug.html)`：使用 `{:?}` formatter 来格式化一个值。
+
+### 返回 `dyn Trait` / `impl Trait`
+
+Rust 编译器需要知道**每个函数的返回类型需要多少空间**。这意味着所有函数都必须返回一个具体类型。与其他语言不同，不能直接返回 trait，因为其不同的实现将需要不同的内存量。
+
+在这种情况下，我们需要使用 `Box<dyn Animal>`。这个函数返回一个包含一些 `Animal` 的 Box（只是对堆中某些内存的引用）。因为引用的大小是静态已知的，并且编译器可以保证引用指向已分配的堆内存，所以可以从函数中返回 `trait`。
+
+> 每当在堆上分配内存时，Rust 都会尝试尽可能明确。因此，如果函数以这种方式返回指向堆的 `trait` 指针，则需要使用 `dyn` 关键字编写返回类型，例如 `Box<dyn Animal>`。
+
+```rust
+trait Animal {
+    fn make_sound(&self) -> String;
+}
+
+struct Dog;
+impl Animal for Dog {
+    fn make_sound(&self) -> String {
+        "Woof!".to_string()
+    }
+}
+
+struct Cat;
+impl Animal for Cat {
+    fn make_sound(&self) -> String {
+        "Meow!".to_string()
+    }
+}
+
+fn get_animal(is_dog: bool) -> Box<dyn Animal> {
+    if is_dog {
+        Box::new(Dog)
+    } else {
+        Box::new(Cat)
+    }
+}
+```
+
+对于闭包这种场景，或者是没有显式定义 Trait 的情况下，需要作为函数的返回值，则使用 `impl Trait`。
+
+```rust
+fn generate_random_numbers() -> impl Iterator<Item = u32> {
+    use rand::Rng;
+    let mut rng = rand::thread_rng();
+    std::iter::from_fn(move || Some(rng.gen_range(1..100)))
+}
+
+fn main() {
+    let numbers = generate_random_numbers().take(5).collect::<Vec<_>>();
+    println!("{:?}", numbers);
+}
+```
+
+还可以使用 `impl Trait` 返回使用 `map` 或 `filter` 闭包的迭代器！这使得使用 `map` 和 `filter` 更容易。因为闭包类型没有名称，所以如果函数返回带闭包的迭代器，则无法写出显式的返回类型。
+
+```rust
+fn double_positives<'a>(numbers: &'a Vec<i32>) -> impl Iterator<Item = i32> + 'a {
+    numbers.iter().filter(|x| x > &&0).map(|x| x * 2)
+}
+```
+
+| 特性 | dyn Trait | impl Trait |
+|------|-----------|------------|
+| 语法 | `Box<dyn Trait>` | `impl Trait` |
+| 类型擦除 | 完全类型擦除 | 部分类型擦除 |
+| 运行时开销 | 有动态分发开销 | 无动态分发开销 |
+| 内存分配 | 在堆上分配 | 通常在栈上 |
+| 返回类型灵活性 | 可以在运行时返回不同类型 | 编译时确定具体类型 |
+| 适用场景 | 需要运行时多态 | 静态分发，隐藏具体类型 |
+| `trait` 对象安全要求 | 必须满足对象安全 | 无对象安全限制 |
+| 代码可读性 | 对复杂类型可能更清晰 | 对简单情况更简洁 |
+| 编译时类型检查 | 部分延迟到运行时 | 完全在编译时进行 |
+| 性能 | 相对较低 | 通常更高 |
+
+> `impl trait` 的限制主要在于它不能用于表示不同的具体类型。如果需要根据条件返回不同的具体类型，那么就需要使用 `trait` 对象（如 `Box<dyn Trait>`）而不是 `impl trait`。
+
+### 运算符重载
+
+在 Rust 中，很多[运算符](https://rustwiki.org/zh-CN/core/ops/#traits)可以通过 `trait` 来重载。这些运算符可以根据输入参数来完成不同的任务。
+
+> Rust 中的**运算符是方法调用的语法糖**。
+>
+> 例如，`a + b` 中的 `+` 运算符会调用 `add` 方法（也就是 `a.add(b)`）。这个 `add` 方法是 `Add trait` 的一部分。因此，`+` 运算符可以被任何 `Add trait` 的实现者使用。
+
+```rust
+use std::ops::{Add, Sub};
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+impl Add for Point {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Self {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
+
+impl Sub for Point {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self {
+        Self {
+            x: self.x - other.x,
+            y: self.y - other.y,
+        }
+    }
+}
+
+assert_eq!(
+    Point { x: 3, y: 3 },
+    Point { x: 1, y: 0 } + Point { x: 2, y: 3 }
+);
+assert_eq!(
+    Point { x: -1, y: -3 },
+    Point { x: 1, y: 0 } - Point { x: 2, y: 3 }
+);
+```
+
+### [Drop](https://rustwiki.org/zh-CN/std/ops/trait.Drop.html)
+
+`Drop` trait 只有一个方法：`drop`，当不再需要某个值时，Rust 将对该值运行 “析构函数”。 不再需要值的最常见方法是离开作用域。
+
+此析构函数由两个组件组成：
+
+* 如果为此类型实现了特殊的 `Drop` trait，则对该值调用 `Drop::drop`。
+* 自动生成的 `drop glue` 递归调用该值的所有字段的析构函数。
+
+> 由于 Rust 自动调用所有包含字段的析构函数，因此在大多数情况下，无需实现 `Drop`。
+> 但是在某些情况下它很有用，例如对于直接管理资源的类型。 该资源可能是**内存**，可能是**文件描述符**，可能是**网络套接字**。 一旦不再使用该类型的值，则应通过释放内存或关闭文件或套接字 “`clean up`” 资源。
+
+```rust
+struct HasDrop;
+impl Drop for HasDrop {
+    fn drop(&mut self) {
+        println!("Dropping HasDrop!");
+    }
+}
+
+struct HasTwoDrops {
+    one: HasDrop,
+    two: HasDrop,
+}
+impl Drop for HasTwoDrops {
+    fn drop(&mut self) {
+        println!("Dropping HasTwoDrops!");
+    }
+}
+
+fn main() {
+    let _x = HasTwoDrops {
+        one: HasDrop,
+        two: HasDrop,
+    };
+    println!("Running!");
+}
+// 输出：
+// Running!
+// Dropping HasTwoDrops!
+// Dropping HasDrop!
+// Dropping HasDrop!
+```
+
+### [Iterator](https://rustwiki.org/zh-CN/core/iter/trait.Iterator.html)
+
+`Iterator` trait 用来对集合（collection）类型（比如数组）实现迭代器。
+
+```rust
+trait Iterator {
+    type Item;
+    fn next(&mut self) -> Option<Self::Item>;
+}
+```
+
+创建自己的迭代器涉及两个步骤：创建一个 `struct` 来保存迭代器的状态，然后为该 `struct` 实现 `Iterator`。
+
+```rust
+struct CountDown {
+    count: u32,
+}
+impl Iterator for CountDown {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.count == 0 {
+            None
+        } else {
+            self.count -= 1;
+            Some(self.count)
+        }
+    }
+}
+
+fn main() {
+    let countdown = CountDown { count: 5 };
+    for i in countdown {
+        println!("{}", i);
+    }
+}
+```
+
+Rust 的 `for` 循环语法实际上是迭代器的语法糖。为方便起见，`for` 结构会使用 `.into_iter()` 方法将一些集合类型转换为迭代器。
+
+```rust
+let values = vec![1, 2, 3, 4, 5];
+
+for x in values {
+    println!("{x}");
+}
+```
+
+### 父 trait
+
+Rust 没有“继承”，但是可以将一个 `trait` 定义为另一个 `trait` 的超集（即父 `trait`）。
+
+```rust
+// Person 是 Student 的父 trait。
+trait Person {
+    fn name(&self) -> String;
+}
+
+// 实现 Student 需要同时也 impl Person。
+trait Student: Person {
+    fn university(&self) -> String;
+}
+
+trait Programmer {
+    fn fav_language(&self) -> String;
+}
+
+// CompSciStudent 是 Programmer 和 Student 两者的子类。
+// 实现 CompSciStudent 需要同时 impl 两个父 trait。
+trait CompSciStudent: Programmer + Student {
+    fn git_username(&self) -> String;
+}
+
+fn comp_sci_student_greeting(student: &dyn CompSciStudent) -> String {
+    format!(
+        "My name is {} and I attend {}. My favorite language is {}. My Git username is {}",
+        student.name(),
+        student.university(),
+        student.fav_language(),
+        student.git_username()
+    )
+}
+```
+
+### 消除重叠 trait
+
+一个类型可以实现许多不同的 `trait`。如果两个 trait 都需要相同的名称怎么办？例如，许多 trait 可能拥有名为 `get()` 的方法。他们甚至可能有不同的返回类型！
+
+* 由于每个 `trait` 实现都有自己的 `impl` 块，因此很清楚要实现哪个 `trait` 的 `get` 方法。
+* 为了消除它们之间的歧义，必须使用完全限定语法（Fully Qualified Syntax）来进行方法调用。
+
+```rust
+trait UsernameWidget {
+    fn get(&self) -> String;
+}
+
+trait AgeWidget {
+    fn get(&self) -> u8;
+}
+
+struct Form {
+    username: String,
+    age: u8,
+}
+
+impl UsernameWidget for Form {
+    fn get(&self) -> String {
+        self.username.clone()
+    }
+}
+
+impl AgeWidget for Form {
+    fn get(&self) -> u8 {
+        self.age
+    }
+}
+
+fn main() {
+    let form = Form {
+        username: "rustacean".to_owned(),
+        age: 28,
+    };
+
+    let username = <Form as UsernameWidget>::get(&form);
+    assert_eq!("rustacean".to_owned(), username);
+    let age = <Form as AgeWidget>::get(&form);
+    assert_eq!(28, age);
+}
+```
+
 ## 宏
 
-macro_rules!
-常用宏: println!, vec!
+Rust 提供了一个强大的宏系统，可进行**元编程**（metaprogramming）。
+
+* 宏看起来和函数很像，只不过名称末尾有一个感叹号`!`。
+* 宏并不产生函数调用，而是展开成源码，并和程序的其余部分一起被编译。
+
+> Rust 的宏会展开为**抽象语法树**（AST，abstract syntax tree），而不是像字符串预处理那样直接替换成代码，这样就**不会产生无法预料的优先权错误**。
+
+为什么宏是有用的？
+
+* **不写重复代码**（DRY，Don't repeat yourself.）。很多时候需要在一些地方针对不同 的类型实现类似的功能，这时常常可以使用宏来避免重复代码。
+
+* **领域专用语言**（DSL，domain-specific language）。宏允许为特定的目的创造特定的语法。
+
+* **可变接口**（variadic interface）。有时需要能够接受不定数目参数的接口，比如 `println!`，根据格式化字符串的不同，它需要接受任意多的参数。
+
+### `macro_rules!`
+
+宏是通过 `macro_rules!` 宏来创建的。
+
+```rust
+// 这是一个简单的宏，名为 `say_hello`。
+macro_rules! say_hello {
+    () => {
+        // `()` 表示此宏不接受任何参数。
+        println!("Hello!");
+    };
+}
+
+fn main() {
+    say_hello!() // 这个调用将会展开成 `println("Hello");`!
+}
+```
+
+### 指示符
+
+* `block`
+* `expr` 用于表达式
+* `ident` 用于变量名或函数名
+* `item`
+* `literal` 用于字面常量
+* `pat` (模式 pattern)
+* `path`
+* `stmt` (语句 statement)
+* `tt` (标记树 token tree)
+* `ty` (类型 type)
+* `vis` (可见性描述符)
+
+宏的参数使用一个美元符号 `$` 作为前缀，并使用一个**指示符**（designator）来注明类型：
+
+```rust
+macro_rules! create_function {
+    // 此宏接受一个 `ident` 指示符表示的参数，并创建一个名为 `$func_name` 的函数。
+    // `ident` 指示符用于变量名或函数名
+    ($func_name:ident) => {
+        fn $func_name() {
+            // `stringify!` 宏把 `ident` 转换成字符串。
+            println!("You called {:?}()", stringify!($func_name))
+        }
+    };
+}
+
+macro_rules! print_result {
+    // 此宏接受一个 `expr` 类型的表达式，并将它作为字符串，连同其结果一起
+    // 打印出来。
+    // `expr` 指示符表示表达式。
+    ($expression:expr) => {
+        // `stringify!` 把表达式*原样*转换成一个字符串。
+        println!("{:?} = {:?}", stringify!($expression), $expression)
+    };
+}
+
+fn main() {
+    create_function!(foo);
+    create_function!(bar);
+    foo();
+    bar();
+
+    print_result!(1u32 + 1);
+    // 代码块也是表达式！
+    print_result!({
+        let x = 1u32;
+        x * x + 2 * x - 1
+    });
+}
+```
+
+### 重载
+
+宏可以重载，从而接收不同的参数组合。在这方面，`macro_rules!` 的作用类似于匹配（`match`）代码块。
+
+```rust
+// 根据调用它的方式，`test!` 将以不同的方式来比较 `$left` 和 `$right`。
+macro_rules! test {
+    // 参数不需要使用逗号隔开。
+    // 参数可以任意组合！
+    ($left:expr; and $right:expr) => (
+        println!("{:?} and {:?} is {:?}",
+                 stringify!($left),
+                 stringify!($right),
+                 $left && $right)
+    );
+    // ^ 每个分支都必须以分号结束。
+    ($left:expr; or $right:expr) => (
+        println!("{:?} or {:?} is {:?}",
+                 stringify!($left),
+                 stringify!($right),
+                 $left || $right)
+    );
+}
+
+fn main() {
+    test!(1i32 + 1 == 2i32; and 2i32 * 2 == 4i32);
+    test!(true; or false);
+}
+```
+
+### 重复
+
+宏在**参数列表**中：
+
+* 使用 `+` 来表示该参数可能出现**一次或多次**，
+* 使用 `*` 来表示该参数可能出现**零次或多次**。
+
+把模式`$(...),+` 包围起来，就可以匹配一个或多个用逗号隔开的表达式。
+
+> 宏定义的最后一个分支可以不用分号作为结束。
+
+```rust
+// `find_min!` 将求出任意数量的参数的最小值。
+macro_rules! find_min {
+    // 基本情形：
+    ($x:expr) => ($x);
+    // `$x` 后面跟着至少一个 `$y,`
+    ($x:expr, $($y:expr),+) => (
+        // 对 `$x` 后面的 `$y` 们调用 `find_min!` 
+        std::cmp::min($x, find_min!($($y),+))
+    )
+}
+
+fn main() {
+    println!("{}", find_min!(1u32));
+    println!("{}", find_min!(1u32 + 2 , 2u32));
+    println!("{}", find_min!(5u32, 2u32 * 3, 4u32));
+}
+```
+
+## 错误处理
+
+Result<T, E>
+Option
+panic!
+
+## 标准库
 
 ## 异步编程
 
