@@ -2183,9 +2183,229 @@ fn main() {
 
 ## 错误处理
 
-Result<T, E>
-Option
-panic!
+错误处理是处理可能发生的失败情况的过程，显式地处理错误可以避免程序的其他部分产生潜在的问题。
+
+在 Rust 中，有多种处理错误的方式：
+
+|方式|描述|示例|
+|---|---|---|
+|`panic!`|1、测试<br> 2、处理不可恢复的错误|1、原型开发中使用`unimplemented`<br> 2、在测试中是用`panic!`显式地失败|
+|`Option`|1、值可选<br> 2、缺少值并非错误|1、测试或者原型开发时，可以 `unwrap` 然后 `expect`<br> 2、如寻找父目录时，`/` 和 `C:` 目录没有父目录，这并不是一个错误。|
+|`Result`|错误可能发生且应由调用者处理|在测试或者原型开发时，可以 `unwrap` 然后 `expect`|
+
+### `panic!`
+
+```rust
+// exit 是一个发散函数，永远不会返回的函数。
+fn exit() -> ! {
+    // 这会导致程序崩溃并终止执行。
+    panic!("crash and burn");
+}
+```
+
+> 发散函数的一些常见用例包括：程序终止（如这个例子），无限循环，系统级别的错误处理。
+> 使用 `!` 作为返回类型可以**让编译器知道这个函数不会正常返回**，这在某些情况下可以帮助编译器进行优化或进行更严格的类型检查。
+
+### `Option`
+
+在标准库（[std](https://doc.rust-lang.org/std/option/enum.Option.html)）中有个叫做 `Option<T>`的枚举类型，用于有 “不存在” 的可能性的情况。它表现为以下两个 “option”（选项）中的一个：
+
+```rust
+pub enum Option<T> {
+    None,   // 找不到相应的元素
+    Some(T),// 找到一个属于 T 类型的元素
+}
+```
+
+处理 Option 的方式：
+
+1. 使用 `match` 显式地处理，
+2. 使用 `unwrap` 隐式地处理；要么返回 `Some` 内部的元素，要么 `panic`。
+
+> 也可以手动使用 `expect` 方法自定义 `panic` 信息，但相比显式处理，`unwrap` 的输出仍显得不太有意义。
+
+```rust
+fn main() {
+    let some_value: Option<i32> = Some(42);
+    let none_value: Option<i32> = None;
+
+    // 使用 match
+    match some_value {
+        Some(x) => println!("match: Value is {}", x),
+        None => println!("match: No value"),
+    }
+
+    // 使用 unwrap
+    let unwrapped = some_value.unwrap();
+    println!("unwrap: Value is {}", unwrapped);
+
+    // 使用 expect
+    let expected = some_value.expect("Expected a value");
+    println!("expect: Value is {}", expected);
+
+    // 注意：对 None 使用 unwrap 或 expect 会导致 panic
+    // none_value.unwrap(); // 这会 panic
+    // none_value.expect("This will panic"); // 这也会 panic，但有自定义错误信息
+}
+```
+
+**因此，对于 `Option`，只有在原型开发或者测试用例中才会是用 `unwrap` 和 `except`。**
+
+访问 `Option` 变量的方式：
+
+1. `match`
+2. `if let`：
+3. `?`：如果 `Option` 是 `Some`，返回 `Some` 内部的元素，否则无论函数是否正在执行都将终止且返回 `None`
+4. 组合算子 `map`：`Option` 有一个内置方法 `map()`，可用于 `Some -> Some` 和 `None -> None` 这样的简单映射。多个不同的 `map()` 调用可以串起来，这样更加灵活。
+5. `unwarp_or`
+6. `and_then`: 也称为 flatmap，使用被 `Option` 包裹的值来调用其输入函数并返回结果。 如果 `Option` 是 `None`，那么它返回 `None`。
+
+```rust
+struct User {
+    id: u32,
+    name: String,
+    age: Option<u32>,
+}
+
+fn is_adult(age: u32) -> Option<u32> {
+    if age >= 18 {
+        Some(age)
+    } else {
+        None
+    }
+}
+
+fn recommend_activity(age: u32) -> Option<String> {
+    match age {
+        18..=25 => Some(String::from("Join our young adults program!")),
+        26..=35 => Some(String::from("Try our professional networking events!")),
+        36..=55 => Some(String::from("Consider our family-friendly activities!")),
+        56.. => Some(String::from("Check out our seniors' social club!")),
+        _ => None,
+    }
+}
+
+fn print_user_info(user: &User) {
+    // 使用 match 来处理 Option
+    match user.age {
+        Some(age) => println!("Age: {} years old", age),
+        None => println!("Age: Not provided"),
+    }
+
+    // 使用 if let 来处理 Option
+    if let Some(age) = user.age {
+        if age >= 18 {
+            println!("This user is an adult.");
+        } else {
+            println!("This user is a minor.");
+        }
+    }
+
+    // 使用 ? 运算符来提取 age 值
+    let age = user.age?;
+
+    // 使用 map 方法来转换 Option 中的值
+    let age_next_year = user.age.map(|age| age + 1);
+    println!("Age next year: {:?}", age_next_year);
+
+    // 使用 unwrap_or 来提供默认值
+    let can_vote = user.age.unwrap_or(0) >= 18;
+    println!("Can vote: {}", can_vote);
+
+    // 使用 and_then 来链接多个操作:
+    // 1. 首先检查 user.age 是否存在。
+    // 2. 如果存在，则调用 is_adult 函数。
+    // 3. 如果 is_adult 返回 Some，则继续调用 recommend_activity。
+    // 4. 只有当所有步骤都成功（返回 Some）时，activity_recommendation 才会是 Some，否则就是 None。
+    let activity_recommendation = user.age.and_then(is_adult).and_then(recommend_activity);
+
+    match activity_recommendation {
+        Some(activity) => println!("Recommended activity: {}", activity),
+        None => println!("No activity recommendation available."),
+    }
+}
+```
+
+### `[Result<T, E>](https://rustwiki.org/zh-CN/std/result/enum.Result.html)`
+
+`Result` 是 `Option` 类型的更丰富的版本，**描述的是可能的错误而不是可能的不存在**。
+
+`Result<T，E>` 可以有两个结果的其中一个：
+
+* `Ok<T>`：找到 `T` 元素
+* `Err<E>`：找到 `E` 元素，`E` 即表示错误的类型。
+
+按照约定，**预期结果**是 “`Ok`”，而**意外结果**是 “`Err`”。
+
+> `Result` 有很多类似 `Option` 的方法。
+> 在处理 Result 时，`?` 几乎就等于一个会返回 `Err` 而不是 `panic` 的 `unwrap`。
+
+```rust
+#[derive(Debug)]
+enum UserError {
+    InvalidUsername,
+    InvalidPassword,
+    UserCreationFailed,
+}
+
+// 别名
+type UserResult<T> = Result<T, UserError>;
+
+fn validate_username(username: &str) -> UserResult<String> {
+    if username.len() >= 3 {
+        Ok(username.to_string())
+    } else {
+        Err(UserError::InvalidUsername)
+    }
+}
+
+fn validate_password(password: &str) -> UserResult<String> {
+    if password.len() >= 8 {
+        Ok(password.to_string())
+    } else {
+        Err(UserError::InvalidPassword)
+    }
+}
+
+fn create_user(username: String, password: String) -> UserResult<User> {
+    if username == "admin" {
+        Err(UserError::UserCreationFailed)
+    } else {
+        Ok(User { username, password })
+    }
+}
+
+// 使用 map 和 and_then
+fn register_user_map(username: &str, password: &str) -> UserResult<User> {
+    validate_username(username)
+        .and_then(|valid_username| {
+            validate_password(password).map(|valid_password| (valid_username, valid_password))
+        })
+        .and_then(|(username, password)| create_user(username, password))
+}
+
+// 使用类型别名和模式匹配和问号
+fn register_user_alias(username: &str, password: &str) -> UserResult<User> {
+    let valid_username = validate_username(username)?;
+    let valid_password = validate_password(password)?;
+    create_user(valid_username, valid_password)
+}
+
+// 使用提前返回
+fn register_user_early_return(username: &str, password: &str) -> UserResult<User> {
+    let valid_username = match validate_username(username) {
+        Ok(username) => username,
+        Err(e) => return Err(e),
+    };
+
+    let valid_password = match validate_password(password) {
+        Ok(password) => password,
+        Err(e) => return Err(e),
+    };
+
+    create_user(valid_username, valid_password)
+}
+```
 
 ## 标准库
 
