@@ -2326,7 +2326,7 @@ fn print_user_info(user: &User) {
 }
 ```
 
-### `[Result<T, E>](https://rustwiki.org/zh-CN/std/result/enum.Result.html)`
+### [`Result<T, E>`](https://rustwiki.org/zh-CN/std/result/enum.Result.html)
 
 `Result` 是 `Option` 类型的更丰富的版本，**描述的是可能的错误而不是可能的不存在**。
 
@@ -2409,7 +2409,396 @@ fn register_user_early_return(username: &str, password: &str) -> UserResult<User
 
 ## 标准库
 
+| 类别 | 扩充类型 |
+|------|----------|
+| 字符串类型 | - `String`：可增长的、堆分配的 UTF-8 编码字符串<br>- `str`：不可变的 UTF-8 编码字符串切片 |
+| 集合类型 | - `Vec<T>`：可增长的数组<br>- `VecDeque<T>`：双端队列<br>- `LinkedList<T>`：双向链表<br>- `HashMap<K, V>`：哈希表<br>- `BTreeMap<K, V>`：有序映射<br>- `HashSet<T>`：哈希集合<br>- `BTreeSet<T>`：有序集合 |
+| 智能指针 | - `Box<T>`：堆分配的值<br>- `Rc<T>`：引用计数指针<br>- `Arc<T>`：原子引用计数指针<br>- `Cell<T>` 和 `RefCell<T>`：内部可变性 |
+| 同步类型 | - `Mutex<T>`：互斥锁<br>- `RwLock<T>`：读写锁<br>- `Condvar`：条件变量<br>- `Once`：一次性初始化<br>- `Barrier`：同步屏障 |
+| 错误处理 | - `Option<T>`：可选值<br>- `Result<T, E>`：可能的错误结果 |
+| 迭代器相关 | - `Iterator` trait<br>- `IntoIterator` trait |
+| 其他常用类型 | - `Path` 和 `PathBuf`：文件系统路径<br>- `OsString` 和 `OsStr`：操作系统字符串<br>- `CString` 和 `CStr`：C 兼容字符串 |
+| 包装类型 | - `Wrapping<T>`：包装算术运算以处理溢出<br>- `Reverse<T>`：反转比较顺序的包装器 |
+| 固定大小的数组类型 | - `[T; N]`：编译时固定大小的数组 |
+| 切片类型 | - `&[T]` 和 `&mut [T]`：数组或 Vec 的视图 |
+
+### 字符串类型
+
+Rust 中有两种字符串类型：`String` 和 `&str`。
+
+* `String` 被存储为由字节组成的 vector（`Vec<u8>`），但保证了它一定是一个有效的 UTF-8 序列。`String` 是堆分配的，可增长的，且不是零结尾的（null terminated）。
+* `&str` 是一个总是指向有效 UTF-8 序列的切片（`&[u8]`），并可用来查看 `String` 的内容，就如同 `&[T]` 是 `Vec<T>` 的全部或部分引用。
+
+### 集合类型
+
+#### `HashMap`
+
+`HashMap`（散列表）通过键（key）来存储值。键可以是:
+
+* 布尔型、整型、字符串
+* 任意实现了 `Eq` 和 `Hash` trait 的类型，加上`#[derive(PartialEq, Eq, Hash)]`
+
+> 对于所有的集合类（collection class），如果它们包含的类型都分别实现了 `Eq` 和 `Hash`，那么这些集合类也就实现了 `Eq` 和 `Hash`。
+>
+> 注意：
+> `f32` 和 `f64` 没有实现 `Hash`，**由于若使用浮点数作为散列表的键，浮点精度误差会很容易导致错误**。
+
+`HashMap` 也是可增长的，但在占据了多余空间时还可以缩小自己。
+
+* 使用 `HashMap::with_capacity(unit)` 创建具有一定初始容量的 `HashMap`
+* 使用 `HashMap::new()` 来获得一个带有默认初始容量的 `HashMap`（**推荐**）
+
+```rust
+use std::collections::HashMap;
+
+fn main() {
+    // 创建一个新的 HashMap
+    let mut fruit_prices = HashMap::new();
+
+    // 添加键值对到 HashMap
+    fruit_prices.insert(String::from("Apple"), 2);
+    fruit_prices.insert(String::from("Banana"), 1);
+    fruit_prices.insert(String::from("Orange"), 3);
+
+    // 获取特定键的值
+    match fruit_prices.get("Apple") {
+        Some(&price) => println!("Price of Apple: ${}", price),
+        None => println!("Apple not found"),
+    }
+
+    // 检查键是否存在
+    println!("Do we have Mango? {}", fruit_prices.contains_key("Mango"));
+
+    // 更新值
+    *fruit_prices.entry(String::from("Banana")).or_insert(0) = 2;
+    println!("Updated price of Banana: ${}", fruit_prices["Banana"]);
+
+    // 删除键值对
+    fruit_prices.remove("Orange");
+
+    // 遍历 HashMap
+    println!("All fruits and their prices:");
+    for (fruit, price) in &fruit_prices {
+        println!("{}: ${}", fruit, price);
+    }
+
+    // HashMap 的大小
+    println!("Total number of fruits: {}", fruit_prices.len());
+}
+```
+
+#### `HashSet`
+
+`HashSet<T>` 实际上只是对 `HashMap<T, ()>` 的封装，**只关心其中的键而非值**。
+
+> `HashSet` 的独特之处在于，它保证了**不会出现重复的元素**。这是任何 set 集合类型（set collection）遵循的规定。
+
+集合（set）拥有 4 种基本操作（**下面的调用全部都返回一个迭代器**）：
+
+* `union`（并集）：获得两个集合中的所有元素（不含重复值）。
+* `difference`（差集）：获取属于第一个集合而不属于第二集合的所有元素。
+* `intersection`（交集）：获取同时属于两个集合的所有元素。
+* `symmetric_difference`（对称差）：获取所有只属于其中一个集合，而不同时属于两个集合的所有元素。
+
+```rust
+use std::collections::HashSet;
+
+fn main() {
+    let mut a: HashSet<i32> = vec![1i32, 2, 3].into_iter().collect();
+    let mut b: HashSet<i32> = vec![2i32, 3, 4].into_iter().collect();
+
+    println!("A: {:?}", a);
+    println!("B: {:?}", b);
+
+    // 乱序打印 [1, 2, 3, 4, 5]。
+    println!("Union: {:?}", a.union(&b).collect::<Vec<&i32>>());
+
+    // 这将会打印出 [1]
+    println!("Difference: {:?}", a.difference(&b).collect::<Vec<&i32>>());
+
+    // 乱序打印 [2, 3, 4]。
+    println!(
+        "Intersection: {:?}",
+        a.intersection(&b).collect::<Vec<&i32>>()
+    );
+
+    // 打印 [1, 5]
+    println!(
+        "Symmetric Difference: {:?}",
+        a.symmetric_difference(&b).collect::<Vec<&i32>>()
+    );
+}
+```
+
+### 智能指针
+
+#### `Box<T>`
+
+在 Rust 中，所有值默认都是**栈分配的**。通过创建 `Box<T>`，可以把值装箱（boxed）来使它**在堆上分配**。箱子（box，即 `Box<T>` 类型的实例）是一个智能指针，指向堆分配的 `T` 类型的值。
+
+当箱子离开作用域时，它的析构函数会被调用，内部的对象会被销毁，堆上分配的内存也会被释放。
+
+被装箱的值可以使用 `*` 运算符进行解引用；这会移除掉一层装箱。
+
+```rust
+#![allow(dead_code)]
+
+use std::mem;
+
+#[derive(Debug, Clone, Copy)]
+struct Point {
+    x: f64,
+    y: f64,
+}
+
+impl Point {
+    fn new(x: f64, y: f64) -> Point {
+        Point { x: x, y: y }
+    }
+    fn origin() -> Point {
+        Point { x: 0.0, y: 0.0 }
+    }
+    fn boxed_origin() -> Box<Point> {
+        Box::new(Point { x: 0.0, y: 0.0 })
+    }
+}
+
+fn main() {
+    let point_stack = Point::origin();
+    let point_heap = Point::boxed_origin();
+    let boxed_point_heap = Box::new(Point::boxed_origin());
+
+    println!(
+        "Point occupies {} bytes in stack",
+        mem::size_of_val(&point_stack)
+    );
+    // Box 的宽度就是指针的宽度
+    println!(
+        "Point occupies {} bytes in heap",
+        mem::size_of_val(&point_heap)
+    );
+    println!(
+        "Boxed Point occupies {} bytes in heap",
+        mem::size_of_val(&boxed_point_heap)
+    );
+
+    // 使用 * 解引用，移除一层装箱
+    let unboxed_point_heap = *boxed_point_heap;
+    println!(
+        "Unboxed Point occupies {} bytes in heap",
+        mem::size_of_val(&unboxed_point_heap)
+    );
+
+    // output:
+    // Point occupies 16 bytes in stack
+    // Point occupies 8 bytes in heap
+    // Boxed Point occupies 8 bytes in heap
+    // Unboxed Point occupies 8 bytes in heap
+}
+```
+
+#### `Rc<T>`
+
+当需要多个所有权时，可以使用 `Rc`（引用计数，Reference Counting 缩写）。`Rc` 跟踪引用的数量，这相当于包裹在 `Rc` 值的所有者的数量.
+
+> * 当克隆一个 `Rc` 时，Rc 的引用计数就会增加 1，
+> * 当克隆得到的 `Rc` 退出作用域时，引用计数就会减少 1。
+> * 当 `Rc` 的引用计数变为 0 时，这意味着已经没有所有者，`Rc` 和值两者都将被删除。
+
+**克隆 `Rc` 从不执行深拷贝。克隆只创建另一个指向包裹值的指针，并增加计数。**
+
+```rust
+use std::rc::Rc;
+
+fn main() {
+    let rc_examples = "Rc examples".to_string();
+    {
+        println!("--- rc_a is created ---");
+        // `rc_examples` 已经移入 `rc_a`
+        let rc_a: Rc<String> = Rc::new(rc_examples);
+        // Reference Count of rc_a: 1
+        println!("Reference Count of rc_a: {}", Rc::strong_count(&rc_a));
+        {
+            println!("--- rc_a is cloned to rc_b ---");
+            let rc_b: Rc<String> = Rc::clone(&rc_a);
+            // Reference Count of rc_b: 2
+            println!("Reference Count of rc_b: {}", Rc::strong_count(&rc_b));
+            // Reference Count of rc_a: 2            
+            println!("Reference Count of rc_a: {}", Rc::strong_count(&rc_a));
+            // rc_a and rc_b are equal: true
+            println!("rc_a and rc_b are equal: {}", rc_a.eq(&rc_b));
+            // Length of the value inside rc_a: 11
+            println!("Length of the value inside rc_a: {}", rc_a.len());
+            // Value of rc_b: Rc examples
+            println!("Value of rc_b: {}", rc_b);
+            println!("--- rc_b is dropped out of scope ---");
+        }
+        // Reference Count of rc_a: 1
+        println!("Reference Count of rc_a: {}", Rc::strong_count(&rc_a));
+        println!("--- rc_a is dropped out of scope ---");
+    }
+    // 当 `rc_a` 被删时，`rc_examples` 也被一起删除。
+}
+```
+
+### `Arc<T>`
+
+当线程之间所有权需要共享时，可以使用`Arc`（共享引用计数，Atomic Reference Counted 缩写）可以使用。
+
+* 通过 `Clone`，为堆内存中的值的位置，创建一个**引用指针**，同时增加**引用计数器**。
+* 在线程之间共享所有权，因此当指向某个值的最后一个引用指针退出作用域时，该变量将被删除。
+
+```rust
+use std::sync::Arc;
+use std::thread;
+
+fn main() {
+    let apple = Arc::new("the same apple");
+    for _ in 0..10 {
+        let apple = Arc::clone(&apple);
+        thread::spawn(move || {
+            println!("{:?}", apple);
+        });
+    }
+    thread::sleep(std::time::Duration::from_secs(1));
+}
+```
+
+## 其他常用标准库
+
+### 路径
+
+
+
+### 文件输入输出
+
+### 文件系统操作
+
+### 程序参数
+
 ## 异步编程
 
-async/await
-Future trait
+### 线程
+
+Rust 通过 `spawn` 函数提供了创建本地操作系统（native OS）线程的机制，该函数的参数是一个通过**值捕获变量的闭包**（moving closure）。
+
+> 这些线程由操作系统调度（schedule）。
+
+```rust
+use std::thread;
+static NTHREADS: i32 = 10;
+
+fn main() {
+    let mut children = vec![];
+    for i in 0..NTHREADS {
+        children.push(thread::spawn(move || println!("this is thread {}", i)))
+    }
+
+    for child in children {
+        let _ = child.join();
+    }
+}
+```
+
+### 通道
+
+Rust 为线程之间的通信提供了**异步**的通道（`channel`）。通道允许两个端点之间信息的单向流动：`Sender`（发送端） 和 `Receiver`（接收端）。
+
+```rust
+use std::sync::mpsc;
+use std::thread;
+
+static NTHREADS: usize = 3;
+
+fn main() {
+    let (tx, rx) = mpsc::channel();
+    for id in 0..NTHREADS {
+        // sender 端可以被复制。
+        let thread_tx = tx.clone();
+        thread::spawn(move || {
+            // 新建的线程取得 thread_tx 的所有权。
+            thread_tx.send(id).unwrap();
+            println!("thread {} finished", id);
+        });
+    }
+
+    let mut ids = Vec::with_capacity(NTHREADS as usize);
+    for _ in 0..NTHREADS {
+        // recv() 从通道中拿一个消息，若无消息则阻塞当前线程。
+        ids.push(rx.recv());
+    }
+    println!("received ids: {:?}", ids);
+}
+```
+
+### 子进程
+
+* `process::Command` 结构体：表示是一个进程创建者（process builder）。
+* `process::Output` 结构体：表示已结束的子进程的输出。
+
+```rust
+use std::process::Command;
+
+fn main() {
+    let output = Command::new("rustc")
+        .arg("--version")
+        .output()
+        .unwrap_or_else(|e| panic!("failed to execute process: {}", e));
+
+    if output.status.success() {
+        let s = String::from_utf8_lossy(&output.stdout);
+        println!("rustc successed and stdout was:\n{}", s);
+    } else {
+        let s = String::from_utf8_lossy(&output.stderr);
+        println!("rustc failed and stderr was:\n{}", s);
+    }
+}
+```
+
+* `std::Child` 结构体：表示一个正在运行的子进程，它暴露了 `stdin`（标准输入），`stdout`（标准输出）和 `stderr`（标准错误）句柄，从而可以通过管道与所代表的进程交互。
+
+```rust
+use std::io::{Read, Write};
+use std::process::{Command, Stdio};
+
+static PANGRAM: &'static str = "the quick brown fox jumped over the lazy dog\n";
+
+fn main() {
+    let process: Child = match Command::new("wc")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+    {
+        Err(why) => panic!("couldn't spawn wc: {}", why),
+        Ok(process) => process,
+    };
+
+    match process.stdin.unwrap().write_all(PANGRAM.as_bytes()) {
+        Err(why) => panic!("couldn't write to wc stdin: {}", why),
+        Ok(_) => println!("sent pangram to wc"),
+    }
+
+    let mut s = String::new();
+    match process.stdout.unwrap().read_to_string(&mut s) {
+        Err(why) => panic!("couldn't read wc stdout: {:?}", why),
+        Ok(_) => print!("wc responded with:\n{}", s),
+    }
+}
+```
+
+* 要等待一个 `process::Child` 完成，就必须调用 `Child::wait`，这会返回一个 `process::ExitStatus`。
+
+```rust
+use std::process::Command;
+
+fn main() {
+    let mut child = Command::new("sleep").arg("5").spawn().unwrap();
+    match child.wait() {
+        Ok(status) => {
+            println!("child exited with: {}", status);
+        }
+        Err(why) => println!("error waiting for child: {}", why),
+    }
+    println!("reached end of main")
+}
+```
