@@ -6,12 +6,12 @@ This repository contains a comprehensive collection of cheat sheets for various 
 
 | Category | Subcategory | Update Status |
 |----------|-------------|---------------|
-| Kubernetes | [Kubectl](docs/Kubernetes/KUBECTL.md) | Updated |
-| Kubernetes | [YAML](docs/Kubernetes/YAML.md) | Updated |
-| Linux | [Commands](docs/Linux/README.md) | Updated |
-| Network | [Tools](docs/Network/TOOLS.md) | Updated |
-| Prometheus | [PromQL](docs/Prometheus/PromQL.md) | Updated |
-| Rust| [Rust](docs/Rust/README.md) | Updated |
+| Kubernetes | [Kubectl](docs/Kubernetes/KUBECTL.md) | ❌ |
+| Kubernetes | [YAML](docs/Kubernetes/YAML.md) | ❌ |
+| Linux | [Commands](docs/Linux/README.md) | ❌ |
+| Network | [Tools](docs/Network/TOOLS.md) | ❌ |
+| Prometheus | [PromQL](docs/Prometheus/PromQL.md) | ❌ |
+| Rust| [Rust](docs/Rust/README.md) | ✅ |
 
 ## Usage
 
