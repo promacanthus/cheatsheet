@@ -2668,13 +2668,124 @@ fn main() {
 
 ### 路径
 
+`Path` 结构体代表了底层文件系统的文件路径，分为两种：
 
+* `posix::Path`，针对类 UNIX 系统
+* `windows::Path`，针对 Windows
+
+`prelude` 会选择并输出符合平台类型的 `Path` 种类。
+
+> `prelude` 是 Rust 自动地在每个程序中导入的一些通用的东西，这样就不必每写一个程序就手动导入一番。
+
+```rust
+use std::path::Path;
+
+fn main() {
+    let path = Path::new(".");
+    let display = path.display();
+    println!("Display: {}", display);
+    let new_path = path.join("a").join("b");
+    match new_path.to_str() {
+        None => panic!("new path is not a valid UTF-8 sequence"),
+        Some(s) => println!("new path is {}", s),
+    }
+}
+```
+
+注意 `Path` 在内部并不是用 UTF-8 字符串表示的，而是存储为若干字节（`Vec<u8>`）的 vector。因此，将 Path 转化成 `&str` 并非零开销的（free），且可能失败（因此它返回一个 `Option`）。
 
 ### 文件输入输出
 
-### 文件系统操作
+`File` 结构体表示一个**被打开的文件**（它包裹了一个文件描述符），并赋予了对所表示的文件的读写能力。
+
+由于在进行文件 I/O（输入/输出）操作时可能出现各种错误，因此 `File` 的所有方法都返回 `io::Result<T>` 类型，它是 `Result<T, io::Error>` 的别名。
+
+这使得所有 I/O 操作的失败都变成显式的。借助这点，可以看到所有的失败路径，并被鼓励主动地处理这些情形。
+
+```rust
+use std::fs::File;
+use std::io::{self, BufRead, Read, Write};
+use std::path::Path;
+
+static LOREM_IPSUM: &'static str =
+    "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
+tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
+cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
+
+static FILE_PATH: &'static str = "out/lorem_ipsum.txt";
+fn main() {
+    println!("Write file content by create.");
+    let input = Path::new(FILE_PATH);
+    let display = input.display();
+
+    // create 静态方法以只写模式（write-only mode）打开一个文件。
+    // 若文件已经存在，则旧内容将被销毁。否则，将创建一个新文件。
+    let mut file = match File::create(&input) {
+        Err(why) => panic!("couldn't create {}: {}", display, why),
+        Ok(file) => file,
+    };
+
+    match file.write_all(LOREM_IPSUM.as_bytes()) {
+        Err(why) => panic!("couldn't write to {}: {}", display, why),
+        Ok(_) => println!("successfully wrote to {}", display),
+    }
+
+    println!("\nRead file content by open.");
+    let output = Path::new(FILE_PATH);
+    let display = output.display();
+    // open 静态方法以只读模式（read-only mode）打开一个文件。
+    let mut file = match std::fs::File::open(&output) {
+        Err(why) => panic!("couldn't open {}: {}", display, why),
+        Ok(file) => file,
+    };
+
+    let mut s = String::new();
+    match file.read_to_string(&mut s) {
+        Err(why) => panic!("couldn't read {}: {}", display, why),
+        Ok(_) => println!("{} contains:\n{}", display, s),
+    }
+
+    println!("\nRead file content by BufRead.");
+    if let Ok(lines) = read_lines(output) {
+        for line in lines {
+            if let Ok(ipsum) = line {
+                println!("{}", ipsum);
+            }
+        }
+    }
+}
+
+// read_lines 从文件中读取每一行，返回一个 `io::Result<io::Lines<io::BufReader<File>>>`
+fn read_lines<T>(filename: T) -> io::Result<io::Lines<io::BufReader<File>>>
+where
+    T: AsRef<Path>,
+{
+    let file = File::open(filename)?;
+    // lines 在文件行上返回一个迭代器。
+    Ok(io::BufReader::new(file).lines())
+}
+```
 
 ### 程序参数
+
+命令行参数可使用 `std::env::args` 进行接收，这将返回一个迭代器，该迭代器会对每个参数举出一个字符串。
+
+```rust
+use std::env;
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    // 第一个参数是调用本程序的路径
+    println!("My path is {}.", args[0]);
+    // 其余的参数是被传递给程序的命令行参数。
+    // 请这样调用程序：
+    //   $ ./args arg1 arg2
+    println!("I got {:?} arguments: {:?}.", args.len() - 1, &args[1..]);
+}
+```
 
 ## 异步编程
 
